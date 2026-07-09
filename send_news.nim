@@ -1,8 +1,8 @@
-import smtp, times, strutils, httpclient, net, os
+import smtp, times, strutils, httpclient, net, os, posix
 
 proc getLocalIPAddresses(): string =
   result = ""
-  for iface in getInterfaces():
+  for iface in os.getInterfaces():
     for addr in iface.addresses:
       if addr.family == AfInet or addr.family == AfInet6:
         let ipStr = $addr.addr
