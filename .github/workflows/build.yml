@@ -25,7 +25,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        nimble install smtp-client -y
+        nimble install https://github.com/nim-lang/smtp -y
 
     - name: Build for MIPS router
       run: |
