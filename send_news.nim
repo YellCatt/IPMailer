@@ -1,13 +1,18 @@
-import smtp, times, strutils, httpclient, net, os, posix
+import smtp, times, strutils, httpclient, net, os, osproc
 
 proc getLocalIPAddresses(): string =
   result = ""
-  for iface in os.getInterfaces():
-    for addr in iface.addresses:
-      if addr.family == AfInet or addr.family == AfInet6:
-        let ipStr = $addr.addr
-        if not ipStr.startsWith("127.") and not ipStr.startsWith("::1"):
-          result &= "- " & ipStr & "\n"
+  let output = execCmdEx("ip addr show 2>/dev/null || ifconfig 2>/dev/null || cat /proc/net/fib_trie 2>/dev/null")
+  if output.exitCode == 0:
+    for line in output.output.splitLines():
+      if line.contains("inet ") and not line.contains("127.0.0.1") and not line.contains("::1"):
+        let parts = line.split()
+        for part in parts:
+          if part.contains(".") and not part.contains(":"):
+            let ip = part.split("/")[0]
+            if ip != "127.0.0.1":
+              result &= "- " & ip & "\n"
+              break
   if result == "":
     result = "未找到有效的本地网络 IP 地址"
 
