@@ -23,6 +23,10 @@ jobs:
       with:
         nim-version: '2.0.x'
 
+    - name: Install dependencies
+      run: |
+        nimble install smtp-client -y
+
     - name: Build for MIPS router
       run: |
         nim c --cpu:mipsel --os:linux \
