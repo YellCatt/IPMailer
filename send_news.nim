@@ -1,4 +1,4 @@
-import smtp, times, strutils, httpclient, net, os, osproc
+import smtp, times, strutils, net, osproc
 
 proc getLocalIPAddresses(): string =
   result = ""

@@ -16,7 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-mipsel-linux-gnu
+        sudo apt-get install -y gcc-mipsel-linux-gnu libc6-dev-mipsel-cross libgcc-12-dev-mipsel-cross linux-libc-dev-mipsel-cross
 
     - name: Install Nim
       uses: jiro4989/setup-nim-action@v1
@@ -33,7 +33,7 @@ jobs:
             --cc:gcc \
             --gcc.exe:mipsel-linux-gnu-gcc \
             --gcc.linkerexe:mipsel-linux-gnu-gcc \
-            --passC:"-O2 -static -EL -msoft-float" \
+            --passC:"-O2 -static -EL" \
             --passL:"-static" \
             -d:release \
             -d:ssl \
