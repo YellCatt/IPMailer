@@ -1,0 +1,74 @@
+name: Build for MIPS Router
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-mipsel-linux-gnu
+
+    - name: Install Nim
+      uses: jiro4989/setup-nim-action@v1
+      with:
+        nim-version: '2.0.x'
+
+    - name: Build for MIPS router
+      run: |
+        nim c --cpu:mipsel --os:linux \
+            --cc:gcc \
+            --gcc.exe:mipsel-linux-gnu-gcc \
+            --gcc.linkerexe:mipsel-linux-gnu-gcc \
+            --passC:"-O2 -static -EL -msoft-float" \
+            --passL:"-static" \
+            -d:release \
+            -d:ssl \
+            -o:ipmailer_mipsel \
+            send_news.nim
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ipmailer_mipsel
+        path: ipmailer_mipsel
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List downloaded artifacts
+        run: ls -la artifacts/
+
+      - name: Create or Update Dev Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="dev-latest"
+          echo "使用固定版本tag: $VERSION"
+          gh release delete "$VERSION" --yes 2>/dev/null || true
+          gh release create "$VERSION" \
+            --title "Development Build (Latest)" \
+            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms:**%0A- Linux amd64%0A- Linux arm64%0A- Linux mipsle (极路由2 - 已禁用CGO，静态编译)%0A- Windows amd64" \
+            --prerelease \
+            artifacts/*
