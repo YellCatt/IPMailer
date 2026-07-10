@@ -1,17 +1,15 @@
 package main
 
 import (
-	"bytes"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/smtp"
-	"os/exec"
-	"strings"
 	"time"
 )
 
 func getLocalIPAddresses() string {
-	var result strings.Builder
+	var result string
 
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -45,89 +43,95 @@ func getLocalIPAddresses() string {
 			}
 
 			ipStr := ip.String()
-			if strings.Contains(ipStr, ":") {
-				continue
+			if len(ipStr) > 0 && ipStr[0] != ':' {
+				result += "- " + ipStr + "\n"
 			}
-
-			result.WriteString("- " + ipStr + "\n")
 		}
 	}
 
-	if result.Len() == 0 {
-		return getLocalIPAddressesFallback()
+	if result == "" {
+		return "未找到有效的本地网络 IP 地址"
 	}
 
-	return result.String()
+	return result
 }
 
-func getLocalIPAddressesFallback() string {
-	commands := []string{
-		"ip addr show",
-		"ifconfig",
-		"cat /proc/net/fib_trie",
+func sendMailTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return err
 	}
 
-	for _, cmd := range commands {
-		parts := strings.Fields(cmd)
-		if len(parts) == 0 {
-			continue
-		}
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: false,
+		ServerName:         host,
+	}
 
-		var c *exec.Cmd
-		if len(parts) > 1 {
-			c = exec.Command(parts[0], parts[1:]...)
-		} else {
-			c = exec.Command(parts[0])
-		}
+	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
 
-		var stderr bytes.Buffer
-		c.Stderr = &stderr
-		output, err := c.Output()
-		if err != nil {
-			continue
-		}
+	c, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
 
-		lines := strings.Split(string(output), "\n")
-		for _, line := range lines {
-			if strings.Contains(line, "inet ") && !strings.Contains(line, "127.0.0.1") && !strings.Contains(line, "::1") {
-				parts := strings.Fields(line)
-				for _, part := range parts {
-					if strings.Contains(part, ".") && !strings.Contains(part, ":") {
-						ip := strings.Split(part, "/")[0]
-						if ip != "127.0.0.1" {
-							return "- " + ip + "\n"
-						}
-					}
-				}
-			}
+	if auth != nil {
+		if err = c.Auth(auth); err != nil {
+			return err
 		}
 	}
 
-	return "未找到有效的本地网络 IP 地址"
+	if err = c.Mail(from); err != nil {
+		return err
+	}
+
+	for _, addr := range to {
+		if err = c.Rcpt(addr); err != nil {
+			return err
+		}
+	}
+
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(msg)
+	if err != nil {
+		return err
+	}
+	err = w.Close()
+	if err != nil {
+		return err
+	}
+
+	return c.Quit()
 }
 
 func main() {
-	fromEmail := "768305875@qq.com"
-	toEmail := "768305875@qq.com"
-	authCode := "gpfruabgjebubdad"
+	cfg := LoadConfig()
 
 	ipInfo := getLocalIPAddresses()
 	subject := fmt.Sprintf("本地 IP 地址信息 %s", time.Now().Format("2006-01-02 15:04"))
 	body := fmt.Sprintf("本地联网 IP 地址信息：\n\n%s\n\n发送时间：%s\n来自 Go 程序", ipInfo, time.Now().Format(time.RFC1123))
 
-	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
-		fromEmail,
-		toEmail,
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s",
+		cfg.FromEmail,
+		cfg.ToEmail,
 		subject,
 		body,
 	)
 
 	fmt.Println("连接 SMTP...")
-	auth := smtp.PlainAuth("", fromEmail, authCode, "smtp.qq.com")
+	auth := smtp.PlainAuth("", cfg.FromEmail, cfg.AuthCode, cfg.SMTPHost)
+	addr := fmt.Sprintf("%s:%d", cfg.SMTPHost, cfg.SMTPPort)
 
-	err := smtp.SendMail("smtp.qq.com:465", auth, fromEmail, []string{toEmail}, []byte(msg))
+	err := sendMailTLS(addr, auth, cfg.FromEmail, []string{cfg.ToEmail}, []byte(msg))
 	if err != nil {
-		fmt.Printf("发送失败: %v\n", err)
+		fmt.Printf("❌ 发送失败: %v\n", err)
 		return
 	}
 
