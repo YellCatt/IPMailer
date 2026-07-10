@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/smtp"
+	"os"
 	"time"
 )
 
@@ -111,12 +112,21 @@ func sendMailTLS(addr string, auth smtp.Auth, from string, to []string, msg []by
 	return c.Quit()
 }
 
+func getHostname() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "未知设备"
+	}
+	return hostname
+}
+
 func main() {
 	cfg := LoadConfig()
 
+	hostname := getHostname()
 	ipInfo := getLocalIPAddresses()
-	subject := fmt.Sprintf("本地 IP 地址信息 %s", time.Now().Format("2006-01-02 15:04"))
-	body := fmt.Sprintf("本地联网 IP 地址信息：\n\n%s\n\n发送时间：%s\n来自 Go 程序", ipInfo, time.Now().Format(time.RFC1123))
+	subject := fmt.Sprintf("[%s] 本地 IP 地址信息 %s", hostname, time.Now().Format("2006-01-02 15:04"))
+	body := fmt.Sprintf("设备名称：%s\n\n本地联网 IP 地址信息：\n\n%s\n\n发送时间：%s\n来自 Go 程序", hostname, ipInfo, time.Now().Format(time.RFC1123))
 
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s",
 		cfg.FromEmail,
