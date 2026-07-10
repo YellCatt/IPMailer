@@ -13,28 +13,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-mipsel-linux-gnu libc6-dev-mipsel-cross libgcc-12-dev-mipsel-cross linux-libc-dev-mipsel-cross libc6-mipsel-cross
-
-    - name: Install Nim
-      uses: jiro4989/setup-nim-action@v1
+    - name: Set up Go
+      uses: actions/setup-go@v5
       with:
-        nim-version: '2.0.x'
+        go-version: '1.22.x'
 
     - name: Build for MIPS router
       run: |
-        nim c --cpu:mipsel --os:linux \
-            --cc:gcc \
-            --gcc.exe:mipsel-linux-gnu-gcc \
-            --gcc.linkerexe:mipsel-linux-gnu-gcc \
-            --passC:"-O2 -static -EL" \
-            --passL:"-static" \
-            -d:release \
-            -d:ssl \
-            -o:ipmailer_mipsel \
-            send_news.nim
+        CGO_ENABLED=0 GOOS=linux GOARCH=mipsle go build -ldflags="-s -w" -o ipmailer_mipsel main.go
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -48,27 +34,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install OpenSSL (Windows)
-      run: |
-        choco install openssl -y
-        echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-win64" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "PATH=C:\Program Files\OpenSSL-win64\bin;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-    - name: Install Nim
-      uses: jiro4989/setup-nim-action@v1
+    - name: Set up Go
+      uses: actions/setup-go@v5
       with:
-        nim-version: '2.0.x'
+        go-version: '1.22.x'
 
     - name: Build for Windows
       run: |
-        nim c --cpu:amd64 --os:windows \
-            -d:release \
-            -d:ssl \
-            --passL:"-LC:\Program Files\OpenSSL-win64\lib" \
-            --passL:"-llibssl" \
-            --passL:"-llibcrypto" \
-            -o:ipmailer_windows.exe \
-            send_news.nim
+        go build -ldflags="-s -w" -o ipmailer_windows.exe main.go
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
