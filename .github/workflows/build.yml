@@ -61,11 +61,21 @@ jobs:
       run: |
         nimble install https://github.com/nim-lang/smtp -y
 
+    - name: Install OpenSSL (Windows)
+      run: |
+        choco install openssl --version=1.1.1w -y
+        $env:OPENSSL_ROOT_DIR = "C:\Program Files\OpenSSL-win64"
+        $env:PATH = "$env:OPENSSL_ROOT_DIR\bin;$env:PATH"
+        echo "OPENSSL_ROOT_DIR=$env:OPENSSL_ROOT_DIR"
+
     - name: Build for Windows
       run: |
         nim c --cpu:amd64 --os:windows \
             -d:release \
             -d:ssl \
+            --passL:"-LC:\Program Files\OpenSSL-win64\lib" \
+            --passL:"-llibssl" \
+            --passL:"-llibcrypto" \
             -o:ipmailer_windows.exe \
             send_news.nim
 
