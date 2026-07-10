@@ -23,10 +23,6 @@ jobs:
       with:
         nim-version: '2.0.x'
 
-    - name: Install dependencies
-      run: |
-        nimble install https://github.com/nim-lang/smtp -y
-
     - name: Build for MIPS router
       run: |
         nim c --cpu:mipsel --os:linux \
@@ -62,10 +58,6 @@ jobs:
       uses: jiro4989/setup-nim-action@v1
       with:
         nim-version: '2.0.x'
-
-    - name: Install dependencies
-      run: |
-        nimble install https://github.com/nim-lang/smtp -y
 
     - name: Build for Windows
       run: |

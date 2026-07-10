@@ -1,4 +1,4 @@
-import smtp, times, strutils, net, osproc
+import smtp, times, strutils, osproc
 
 proc getLocalIPAddresses(): string =
   result = ""
@@ -25,18 +25,18 @@ proc main() =
   let subject = "本地 IP 地址信息 " & format(now(), "yyyy-MM-dd HH:mm")
   let body = "本地联网 IP 地址信息：\n\n" & ipInfo & "\n\n发送时间：" & $now() & "\n来自 Nim 程序"
 
-  let msg = createMessage(subject, body, fromEmail, @[toEmail])
-
   echo "连接 SMTP..."
-  var client = newSmtp(useSsl = true)
-  client.connect("smtp.qq.com", Port(465))
-
-  echo "登录..."
-  client.auth(fromEmail, authCode)
-
-  echo "发送..."
-  client.sendMail(fromEmail, @[toEmail], $msg)
-  client.close()
+  smtp.sendMail(
+    server = "smtp.qq.com",
+    port = Port(465),
+    fromAddr = fromEmail,
+    toAddrs = @[toEmail],
+    subject = subject,
+    body = body,
+    user = fromEmail,
+    password = authCode,
+    useSsl = true
+  )
 
   echo "✅ 已发送"
 
