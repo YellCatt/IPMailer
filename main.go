@@ -123,10 +123,13 @@ func getHostname() string {
 func main() {
 	cfg := LoadConfig()
 
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	now := time.Now().In(loc)
+
 	hostname := getHostname()
 	ipInfo := getLocalIPAddresses()
-	subject := fmt.Sprintf("[%s] 本地 IP 地址信息 %s", hostname, time.Now().Format("2006-01-02 15:04"))
-	body := fmt.Sprintf("设备名称：%s\n\n本地联网 IP 地址信息：\n\n%s\n\n发送时间：%s\n来自 Go 程序", hostname, ipInfo, time.Now().Format(time.RFC1123))
+	subject := fmt.Sprintf("[%s] 本地 IP 地址信息 %s", hostname, now.Format("2006-01-02 15:04"))
+	body := fmt.Sprintf("设备名称：%s\n\n本地联网 IP 地址信息：\n\n%s\n\n发送时间：%s\n来自 Go 程序", hostname, ipInfo, now.Format(time.RFC1123))
 
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s",
 		cfg.FromEmail,
