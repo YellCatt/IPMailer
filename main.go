@@ -57,14 +57,14 @@ func getLocalIPAddresses() string {
 	return result
 }
 
-func sendMailTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
+func sendMailTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte, skipVerify bool) error {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return err
 	}
 
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: false,
+		InsecureSkipVerify: skipVerify,
 		ServerName:         host,
 	}
 
@@ -139,7 +139,11 @@ func main() {
 	auth := smtp.PlainAuth("", cfg.FromEmail, cfg.AuthCode, cfg.SMTPHost)
 	addr := fmt.Sprintf("%s:%d", cfg.SMTPHost, cfg.SMTPPort)
 
-	err := sendMailTLS(addr, auth, cfg.FromEmail, []string{cfg.ToEmail}, []byte(msg))
+	if cfg.TLSSkipVerify {
+		fmt.Println("⚠️ 警告：TLS 证书校验已跳过")
+	}
+
+	err := sendMailTLS(addr, auth, cfg.FromEmail, []string{cfg.ToEmail}, []byte(msg), cfg.TLSSkipVerify)
 	if err != nil {
 		fmt.Printf("❌ 发送失败: %v\n", err)
 		return
